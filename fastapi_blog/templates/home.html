@@ -1,0 +1,123 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="content-header">
+    <h1 class="page-title">Blog Posts</h1>
+    <p class="page-subtitle">Latest articles and insights from our community</p>
+</div>
+
+<!-- Metrics Grid -->
+<div class="grid grid-2 animate-in">
+    <div class="metric-card delay-1">
+        <div class="metric-header">
+            <div class="metric-label">Total Posts</div>
+            <div class="metric-badge positive">
+                <i data-lucide="trending-up" style="width: 12px; height: 12px;"></i>
+                +12.5%
+            </div>
+        </div>
+        <div class="metric-value">{{ posts|length }}</div>
+        <div class="metric-description">
+            <i data-lucide="trending-up" style="width: 14px; height: 14px; color: var(--accent-green);"></i>
+            Growing steadily this month
+        </div>
+        <div class="metric-subdescription">Total blog posts published</div>
+    </div>
+
+    <div class="metric-card delay-2">
+        <div class="metric-header">
+            <div class="metric-label">Active Authors</div>
+            <div class="metric-badge positive">
+                <i data-lucide="trending-up" style="width: 12px; height: 12px;"></i>
+                +4.5%
+            </div>
+        </div>
+        <div class="metric-value">{{ posts|map(attribute='author')|unique|list|length }}</div>
+        <div class="metric-description">
+            <i data-lucide="users" style="width: 14px; height: 14px; color: var(--accent-blue);"></i>
+            Active contributors
+        </div>
+        <div class="metric-subdescription">Content creators on the platform</div>
+    </div>
+</div>
+
+<!-- Posts Section -->
+<div style="margin-top: 48px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2 style="font-size: 20px; font-weight: 700; color: var(--text-primary);">Recent Posts</h2>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12px;">
+                Last 3 months
+            </button>
+            <button class="btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12px;">
+                Last 30 days
+            </button>
+            <button class="btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12px; background: var(--glow-medium);">
+                Last 7 days
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-2">
+        {% for post in posts %}
+        <a href="{{ url_for('post_details', post_id=post.id)}}" style="text-decoration: none; display: block;">
+            <div class="post-card animate-in delay-{{ loop.index }}">
+                <div class="post-header">
+                    <img
+                        src="https://ui-avatars.com/api/?name={{ post.author }}&background=random&size=80"
+                        alt="{{ post.author }}"
+                        class="post-avatar"
+                    >
+                    <div class="post-meta">
+                        <span class="post-author">{{ post.author }}</span>
+                        <div class="post-date">{{ post.date_posted }}</div>
+                    </div>
+                </div>
+                <div class="post-content">
+                    <h3 class="post-title">{{ post.title }}</h3>
+                    <p class="post-excerpt">{{ post.content }}</p>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Additional Info Section -->
+<div class="grid grid-3" style="margin-top: 48px;">
+    <div class="card animate-in delay-1">
+        <div style="margin-bottom: 12px;">
+            <i data-lucide="file-text" style="width: 24px; height: 24px; color: var(--accent-blue);"></i>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Latest Posts</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+            View the most recent blog posts from our community of developers and tech enthusiasts.
+        </p>
+    </div>
+
+    <div class="card animate-in delay-2">
+        <div style="margin-bottom: 12px;">
+            <i data-lucide="bell" style="width: 24px; height: 24px; color: var(--accent-green);"></i>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Announcements</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+            Stay updated with platform announcements, new features, and important updates.
+        </p>
+    </div>
+
+    <div class="card animate-in delay-3">
+        <div style="margin-bottom: 12px;">
+            <i data-lucide="calendar" style="width: 24px; height: 24px; color: var(--accent-purple);"></i>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Events</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+            Check out upcoming events, webinars, and community meetups happening soon.
+        </p>
+    </div>
+</div>
+
+<script>
+    // Re-initialize Lucide icons for dynamically loaded content
+    lucide.createIcons();
+</script>
+{% endblock %}

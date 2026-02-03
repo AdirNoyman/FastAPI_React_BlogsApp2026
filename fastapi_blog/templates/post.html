@@ -1,0 +1,137 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<!-- Breadcrumb Navigation -->
+<div style="margin-bottom: 24px;">
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary);">
+        <a href="/" style="color: var(--text-secondary); text-decoration: none; transition: color var(--transition-fast);"
+           onmouseover="this.style.color='var(--text-primary)'"
+           onmouseout="this.style.color='var(--text-secondary)'">Home</a>
+        <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+        <span style="color: var(--text-muted);">{{ post.title[:40] }}{% if post.title|length > 40 %}...{% endif %}</span>
+    </div>
+</div>
+
+<!-- Post Detail Card -->
+<div class="post-detail-container animate-in">
+    <div class="post-detail-card">
+        <!-- Gradient Accent Bar -->
+        <div class="post-detail-accent"></div>
+
+        <!-- Post Header -->
+        <div class="post-detail-header">
+            <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
+                <img
+                    src="https://ui-avatars.com/api/?name={{ post.author }}&background=random&size=128"
+                    alt="{{ post.author }}"
+                    class="post-detail-avatar"
+                >
+                <div>
+                    <h1 class="post-detail-title">{{ post.title }}</h1>
+                    <div class="post-detail-meta">
+                        <span class="post-detail-author">{{ post.author }}</span>
+                        <span style="color: var(--text-muted);">•</span>
+                        <span class="post-detail-date">{{ post.date_posted }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="post-actions">
+                <a href="/posts/{{ post.id }}/edit" class="btn-secondary" style="text-decoration: none;">
+                    <i data-lucide="edit-2" style="width: 16px; height: 16px;"></i>
+                    Edit
+                </a>
+                <button onclick="openDeleteModal()" class="btn-danger">
+                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                    Delete
+                </button>
+            </div>
+        </div>
+
+        <!-- Post Content -->
+        <div class="post-detail-content">
+            {{ post.content }}
+        </div>
+
+        <!-- Post Footer -->
+        <div class="post-detail-footer">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <span class="tag">Blog Post</span>
+                <span class="tag">FastAPI</span>
+                <span class="tag">Python</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeDeleteModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-primary);">Delete Post</h3>
+            <button onclick="closeDeleteModal()" class="icon-button" style="width: 32px; height: 32px;">
+                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-secondary); line-height: 1.6;">
+                Are you sure you want to delete "<strong style="color: var(--text-primary);">{{ post.title }}</strong>"?
+                This action cannot be undone.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeDeleteModal()" class="btn-secondary">Cancel</button>
+            <button onclick="confirmDelete()" class="btn-danger">Delete Post</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openDeleteModal() {
+        const modal = document.getElementById('deleteModal');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        // Re-initialize Lucide icons in modal
+        lucide.createIcons();
+    }
+
+    function closeDeleteModal() {
+        const modal = document.getElementById('deleteModal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    async function confirmDelete() {
+        try {
+            const response = await fetch('/posts/{{ post.id }}', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                window.location.href = '/';
+            } else {
+                alert('Failed to delete post. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeDeleteModal();
+        }
+    });
+
+    // Re-initialize Lucide icons
+    lucide.createIcons();
+</script>
+{% endblock %}

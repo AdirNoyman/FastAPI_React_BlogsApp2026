@@ -2,7 +2,9 @@ from fastapi import FastAPI, HTTPException, Request, status, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import os
 
 
@@ -20,6 +22,21 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
+
+
+# # Custom 404 error handler
+# @app.exception_handler(StarletteHTTPException)
+# async def custom_404_handler(request: Request, exc: StarletteHTTPException):
+    # if exc.status_code == 404:
+    #     return templates.TemplateResponse(
+    #         request,
+    #         "404.html",
+    #         {"request": request},
+    #         status_code=404
+    #     )
+#     # For other HTTP exceptions, re-raise them
+#     raise exc
+
 
 posts: list[dict] = [
     {
@@ -129,3 +146,56 @@ if os.path.exists(frontend_dist):
             raise HTTPException(status_code=404)
         index_path = os.path.join(frontend_dist, "index.html")
         return FileResponse(index_path)
+
+
+## StarletteHTTPException Handler
+@app.exception_handler(StarletteHTTPException)
+def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
+    message = (
+        exception.detail
+        if exception.detail
+        else "An error occurred. Please check your request and try again."
+    )
+
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            status_code=exception.status_code,
+            content={"detail": message},
+        )
+    if exception.status_code == 404:
+        return templates.TemplateResponse(
+            request,
+            "404.html",
+            {"request": request},
+            status_code=404
+        )
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {
+            "status_code": exception.status_code,
+            "title": exception.status_code,
+            "message": message,
+        },
+        status_code=exception.status_code,
+    )
+
+
+### RequestValidationError Handler
+@app.exception_handler(RequestValidationError)
+def validation_exception_handler(request: Request, exception: RequestValidationError):
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": exception.errors()},
+        )
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {
+            "status_code": status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "title": status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "message": "Invalid request. Please check your input and try again.",
+        },
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+    )

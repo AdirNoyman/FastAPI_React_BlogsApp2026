@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found | FastAPI Blog</title>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+
+    <style>
+        .error-page {
+            display: grid;
+            min-height: 100vh;
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 1280px) {
+            .error-page {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .error-content {
+            display: flex;
+            flex-direction: column;
+            padding: 4rem;
+        }
+
+        .error-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (min-width: 1280px) {
+            .error-logo {
+                justify-content: flex-start;
+            }
+        }
+
+        .error-logo-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            background-color: hsl(var(--primary, 262 83% 58%));
+            color: white;
+            border-radius: 0.5rem;
+        }
+
+        .error-logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .error-main {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        @media (min-width: 1280px) {
+            .error-main {
+                align-items: flex-start;
+                text-align: left;
+            }
+        }
+
+        .error-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .error-code {
+            font-size: 6rem;
+            font-weight: 600;
+            color: hsl(var(--primary, 262 83% 58%));
+        }
+
+        .error-title {
+            margin-bottom: 0.5rem;
+            font-size: 2.25rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .error-description {
+            color: hsl(var(--muted-foreground, 0 0% 45%));
+            margin-bottom: 2rem;
+        }
+
+        .error-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            background-color: hsl(var(--primary, 262 83% 58%));
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+
+        .error-button:hover {
+            background-color: hsl(var(--primary-hover, 262 83% 50%));
+        }
+
+        .error-image {
+            display: none;
+            min-height: 100vh;
+            object-fit: cover;
+        }
+
+        @media (min-width: 1280px) {
+            .error-image {
+                display: block;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .error-image {
+                filter: brightness(0.95) invert(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-page">
+        <div class="error-content">
+            <!-- Logo -->
+            <div class="error-logo">
+                <div class="error-logo-icon">
+                    <i data-lucide="zap" style="width: 20px; height: 20px;"></i>
+                </div>
+                <span class="error-logo-text">FastAPI Blog</span>
+            </div>
+
+            <div class="error-main">
+                <div class="error-badge">
+                    <span class="error-code">404</span>
+                </div>
+                <h1 class="error-title">Page Not Found</h1>
+                <p class="error-description">Oops! The page you're trying to access doesn't exist.</p>
+                <a href="{{ url_for('home') }}" class="error-button">
+                    <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+                    <span>Go Back Home</span>
+                </a>
+            </div>
+        </div>
+        <img
+            src="https://ui.shadcn.com/placeholder.svg"
+            alt="404 illustration"
+            class="error-image"
+        />
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

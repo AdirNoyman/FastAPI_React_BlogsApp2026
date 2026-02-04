@@ -23,21 +23,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
-
-# # Custom 404 error handler
-# @app.exception_handler(StarletteHTTPException)
-# async def custom_404_handler(request: Request, exc: StarletteHTTPException):
-    # if exc.status_code == 404:
-    #     return templates.TemplateResponse(
-    #         request,
-    #         "404.html",
-    #         {"request": request},
-    #         status_code=404
-    #     )
-#     # For other HTTP exceptions, re-raise them
-#     raise exc
-
-
+# In-memory data store
 posts: list[dict] = [
     {
         "id": 1,
@@ -62,15 +48,14 @@ posts: list[dict] = [
     },
 ]
 
-# Templates routes
-
-
+# Templates routes ###########################################
+# Home and Posts List
 @app.get("/", include_in_schema=False, name="home")
 @app.get("/posts", include_in_schema=False, name="posts")
 def home(request: Request):
     return templates.TemplateResponse(request, "home.html", {"request": request, "posts": posts, "title": "Home"})
 
-
+# Post Details
 @app.get("/posts/{post_id}", include_in_schema=False)
 def post_details(request: Request, post_id: int):
     for post in posts:
@@ -118,7 +103,7 @@ async def delete_post(post_id: int):
     return {"success": True}
 
 
-# API routes
+# API routes ###########################################
 @app.get("/api/posts")
 def get_posts():
     return posts
@@ -139,13 +124,6 @@ frontend_dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
 if os.path.exists(frontend_dist):
     app.mount(
         "/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
-
-    @app.get("/{full_path:path}", include_in_schema=False)
-    async def serve_react_app(full_path: str):
-        if full_path.startswith("api/"):
-            raise HTTPException(status_code=404)
-        index_path = os.path.join(frontend_dist, "index.html")
-        return FileResponse(index_path)
 
 
 ## StarletteHTTPException Handler

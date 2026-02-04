@@ -1,23 +1,12 @@
 from fastapi import FastAPI, HTTPException, Request, status, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-import os
 
 
 app = FastAPI()
-
-# Add CORS middleware for development
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -116,14 +105,6 @@ def get_post(post_id: int):
             return post
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                         detail="Post not found")
-
-
-# Serve React app in production
-frontend_dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
-
-if os.path.exists(frontend_dist):
-    app.mount(
-        "/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
 
 
 ## StarletteHTTPException Handler

@@ -1,0 +1,187 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<!-- Breadcrumb Navigation -->
+<div style="margin-bottom: 24px;">
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary);">
+        <a href="/" style="color: var(--text-secondary); text-decoration: none; transition: color var(--transition-fast);"
+           onmouseover="this.style.color='var(--text-primary)'"
+           onmouseout="this.style.color='var(--text-secondary)'">Home</a>
+        <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+        <span style="color: var(--text-muted);">{{ user.username }}'s Posts</span>
+    </div>
+</div>
+
+<!-- User Profile Header -->
+<div class="animate-in" style="margin-bottom: 32px;">
+    <div class="card" style="padding: 32px;">
+        <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+            <img
+                src="{{ url_for('static', path='profile_pics/' + user.image_file) }}"
+                alt="{{ user.username }}"
+                style="width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--glow-medium); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);"
+            >
+            <div style="flex: 1; min-width: 200px;">
+                <h1 class="page-title" style="margin-bottom: 8px;">{{ user.username }}</h1>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">
+                    <i data-lucide="mail" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                    {{ user.email }}
+                </p>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <div class="tag">
+                        <i data-lucide="file-text" style="width: 12px; height: 12px;"></i>
+                        {{ posts|length }} {{ 'Post' if posts|length == 1 else 'Posts' }}
+                    </div>
+                    <div class="tag">
+                        <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
+                        Member since {{ user.date_joined.strftime('%B %Y') if user.date_joined else 'Recently' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Metrics Grid -->
+{% if posts|length > 0 %}
+<div class="grid grid-2 animate-in" style="margin-bottom: 32px;">
+    <div class="metric-card delay-1">
+        <div class="metric-header">
+            <div class="metric-label">Total Posts</div>
+            <div class="metric-badge positive">
+                <i data-lucide="trending-up" style="width: 12px; height: 12px;"></i>
+                Active
+            </div>
+        </div>
+        <div class="metric-value">{{ posts|length }}</div>
+        <div class="metric-description">
+            <i data-lucide="file-text" style="width: 14px; height: 14px; color: var(--accent-blue);"></i>
+            Published articles
+        </div>
+        <div class="metric-subdescription">All posts by {{ user.username }}</div>
+    </div>
+
+    <div class="metric-card delay-2">
+        <div class="metric-header">
+            <div class="metric-label">Latest Activity</div>
+            <div class="metric-badge positive">
+                <i data-lucide="zap" style="width: 12px; height: 12px;"></i>
+                Recent
+            </div>
+        </div>
+        <div class="metric-value" style="font-size: 20px;">{{ posts[0].date_posted if posts else 'N/A' }}</div>
+        <div class="metric-description">
+            <i data-lucide="clock" style="width: 14px; height: 14px; color: var(--accent-green);"></i>
+            Last post published
+        </div>
+        <div class="metric-subdescription">Most recent content update</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Posts Section -->
+<div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2 style="font-size: 20px; font-weight: 700; color: var(--text-primary);">
+            {% if posts|length > 0 %}
+                All Posts by {{ user.username }}
+            {% else %}
+                No Posts Yet
+            {% endif %}
+        </h2>
+        {% if posts|length > 0 %}
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12px;">
+                <i data-lucide="filter" style="width: 14px; height: 14px;"></i>
+                Filter
+            </button>
+            <button class="btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12px;">
+                <i data-lucide="arrow-up-down" style="width: 14px; height: 14px;"></i>
+                Sort
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if posts|length > 0 %}
+    <div class="grid grid-2">
+        {% for post in posts %}
+        <a href="/posts/{{ post.id }}" style="text-decoration: none; display: block;">
+            <div class="post-card animate-in delay-{{ loop.index }}">
+                <div class="post-header">
+                    <img
+                        src="{{ url_for('static', path='profile_pics/' + user.image_file) }}"
+                        alt="{{ user.username }}"
+                        class="post-avatar"
+                    >
+                    <div class="post-meta">
+                        <span class="post-author">{{ user.username }}</span>
+                        <div class="post-date">{{ post.date_posted }}</div>
+                    </div>
+                </div>
+                <div class="post-content">
+                    <h3 class="post-title">{{ post.title }}</h3>
+                    <p class="post-excerpt">{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="card animate-in" style="padding: 64px 32px; text-align: center;">
+        <div style="margin-bottom: 16px;">
+            <i data-lucide="file-text" style="width: 48px; height: 48px; color: var(--text-muted);"></i>
+        </div>
+        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">No Posts Yet</h3>
+        <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; max-width: 400px; margin-left: auto; margin-right: auto;">
+            {{ user.username }} hasn't published any posts yet. Check back later for new content!
+        </p>
+        <a href="/" class="btn-primary" style="text-decoration: none;">
+            <i data-lucide="home" style="width: 16px; height: 16px;"></i>
+            Back to Home
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Additional User Info -->
+{% if posts|length > 0 %}
+<div class="grid grid-3" style="margin-top: 48px;">
+    <div class="card animate-in delay-1">
+        <div style="margin-bottom: 12px;">
+            <i data-lucide="activity" style="width: 24px; height: 24px; color: var(--accent-blue);"></i>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Content Stats</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+            View detailed statistics about {{ user.username }}'s content contribution and engagement.
+        </p>
+    </div>
+
+    <div class="card animate-in delay-2">
+        <div style="margin-bottom: 12px;">
+            <i data-lucide="bell" style="width: 24px; height: 24px; color: var(--accent-green);"></i>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Follow Author</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+            Get notified when {{ user.username }} publishes new content and updates.
+        </p>
+    </div>
+
+    <div class="card animate-in delay-3">
+        <div style="margin-bottom: 12px;">
+            <i data-lucide="share-2" style="width: 24px; height: 24px; color: var(--accent-purple);"></i>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Share Profile</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+            Share {{ user.username }}'s profile with others and spread great content.
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    // Re-initialize Lucide icons for dynamically loaded content
+    lucide.createIcons();
+</script>
+{% endblock %}

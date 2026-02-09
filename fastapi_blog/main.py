@@ -1,113 +1,209 @@
-from fastapi import FastAPI, HTTPException, Request, status, Form
+from fastapi import FastAPI, HTTPException, Request, status, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from typing import Annotated
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+import models.models as models
+from database import Base, engine, get_db
+import models.schemas as schemas
 
+# Create the database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+app.mount("/media", StaticFiles(directory="media"), name="media")
+
 templates = Jinja2Templates(directory="templates")
 
 # In-memory data store
-posts: list[dict] = [
-    {
-        "id": 1,
-        "author": "CoreyMSchafer",
-        "title": "Why I Love FastAPI",
-        "content": "FastAPI has quickly become my favorite Python web framework. The automatic docs, type hints, and async support make it a joy to work with. If you haven't tried it yet, I highly recommend giving it a shot!",
-        "date_posted": "December 31, 2025",
-    },
-    {
-        "id": 2,
-        "author": "GoodBoyBronx",
-        "title": "Corey Schafer Has the Best YouTube Tutorials!",
-        "content": "I just finished watching Corey's FastAPI series and I learned so much. His teaching style is clear, concise, and easy to follow. Highly recommend his channel to anyone looking to learn Python!",
-        "date_posted": "December 30, 2025",
-    },
-    {
-        "id": 3,
-        "author": "PoppyTheCoder",
-        "title": "Async/Await Finally Clicked",
-        "content": "After struggling with async programming for months, it finally clicked for me. The key insight was understanding the event loop and how coroutines yield control. Now my APIs are lightning fast!",
-        "date_posted": "December 27, 2025",
-    },
-]
+# posts: list[dict] = [
+#     {
+#         "id": 1,
+#         "author": "CoreyMSchafer",
+#         "title": "Why I Love FastAPI",
+#         "content": "FastAPI has quickly become my favorite Python web framework. The automatic docs, type hints, and async support make it a joy to work with. If you haven't tried it yet, I highly recommend giving it a shot!",
+#         "date_posted": "December 31, 2025",
+#     },
+#     {
+#         "id": 2,
+#         "author": "GoodBoyBronx",
+#         "title": "Corey Schafer Has the Best YouTube Tutorials!",
+#         "content": "I just finished watching Corey's FastAPI series and I learned so much. His teaching style is clear, concise, and easy to follow. Highly recommend his channel to anyone looking to learn Python!",
+#         "date_posted": "December 30, 2025",
+#     },
+#     {
+#         "id": 3,
+#         "author": "PoppyTheCoder",
+#         "title": "Async/Await Finally Clicked",
+#         "content": "After struggling with async programming for months, it finally clicked for me. The key insight was understanding the event loop and how coroutines yield control. Now my APIs are lightning fast!",
+#         "date_posted": "December 27, 2025",
+#     },
+# ]
 
 # Templates routes ###########################################
 # Home and Posts List
+
+
+## home
 @app.get("/", include_in_schema=False, name="home")
 @app.get("/posts", include_in_schema=False, name="posts")
-def home(request: Request):
-    return templates.TemplateResponse(request, "home.html", {"request": request, "posts": posts, "title": "Home"})
-
-# Post Details
-@app.get("/posts/{post_id}", include_in_schema=False)
-def post_details(request: Request, post_id: int):
-    for post in posts:
-        if post.get("id") == post_id:
-            title = post["title"][:30] + \
-                "..." if len(post["title"]) > 30 else post["title"]
-            return templates.TemplateResponse(request, "post.html", {"request": request, "post": post, "title": title})
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Post not found")
+def home(request: Request, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Post))
+    posts = result.scalars().all()
+    return templates.TemplateResponse(
+        request,
+        "home.html",
+        {"posts": posts, "title": "Home"},
+    )
 
 
-@app.get("/posts/{post_id}/edit", include_in_schema=False)
-def post_edit_form(request: Request, post_id: int):
-    post = next((p for p in posts if p.get("id") == post_id), None)
-    if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Post not found")
-    return templates.TemplateResponse(request, "edit_post.html", {"request": request, "post": post, "title": f"Edit {post['title']}"})
+## post_page
+@app.get("/posts/{post_id}", include_in_schema=False, name="post")
+def post_page(request: Request, post_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()
+    if post:
+        title = post.title[:50]
+        return templates.TemplateResponse(
+            request,
+            "post.html",
+            {"post": post, "title": title},
+        )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
 
-@app.post("/posts/{post_id}", include_in_schema=False)
-async def update_post(request: Request, post_id: int):
-    form_data = await request.form()
-    post = next((p for p in posts if p.get("id") == post_id), None)
-    if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Post not found")
+## user_posts_page
+@app.get("/users/{user_id}/posts", include_in_schema=False, name="user_posts")
+def user_posts_page(
+    request: Request,
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)],
+):
+    result = db.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
 
-    post["title"] = form_data.get("title")
-    post["content"] = form_data.get("content")
-    post["author"] = form_data.get("author")
-
-    return RedirectResponse(url=f"/posts/{post_id}", status_code=303)
-
-
-@app.delete("/posts/{post_id}")
-async def delete_post(post_id: int):
-    global posts
-    post = next((p for p in posts if p.get("id") == post_id), None)
-    if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Post not found")
-
-    posts = [p for p in posts if p.get("id") != post_id]
-    return {"success": True}
+    result = db.execute(select(models.Post).where(models.Post.user_id == user_id))
+    posts = result.scalars().all()
+    return templates.TemplateResponse(
+        request,
+        "user_posts.html",
+        {"posts": posts, "user": user, "title": f"{user.username}'s Posts"},
+    )
 
 
-# API routes ###########################################
-@app.get("/api/posts")
-def get_posts():
+
+# API routes - Posts ###########################################
+# GET ALL POSTS
+@app.get("/api/posts", response_model=list[schemas.PostResponse])
+def get_posts(db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Post))
+    posts = result.scalars().all()
     return posts
 
+# GET SINGLE POST
+@app.get("/api/posts/{post_id}", response_model=schemas.PostResponse)
+def get_post(post_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()
+    if post:
+        return post
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
-@app.get("/api/posts/{post_id}")
-def get_post(post_id: int):
-    for post in posts:
-        if post.get("id") == post_id:
-            return post
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Post not found")
+# CREATE POST
+@app.post("/api/posts", response_model=schemas.PostResponse, status_code=status.HTTP_201_CREATED)
+def create_post(post: schemas.PostCreate, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.id == post.user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
 
+    new_post = models.Post(
+        title=post.title,
+        content=post.content,
+        user_id=post.user_id,
+    )
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    return new_post
 
-## StarletteHTTPException Handler
+## GET ALL POSTS BY USER
+@app.get("/api/users/{user_id}/posts", response_model=list[schemas.PostResponse])
+def get_user_posts(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    result = db.execute(select(models.Post).where(models.Post.user_id == user_id))
+    posts = result.scalars().all()
+    return posts
+
+# DELETE POST
+@app.delete("/api/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(post_id: int, db: Annotated[Session, Depends(get_db)]):
+    # TODO: add authentication and check if the current user is the author of the post before allowing deletion
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    db.delete(post)
+    db.commit()
+    return 
+
+# API routes - Users ###########################################
+# CREATE USER
+@app.post("/api/users", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+def create_user(user: schemas.UserCreate, db: Annotated[Session, Depends(get_db)]):
+    username_exists = db.execute(
+        select(models.User).where(models.User.username == user.username)
+    ).scalar_one_or_none()
+    if username_exists:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Username already exists")
+    email_exists = db.execute(
+        select(models.User).where(models.User.email == user.email)
+    ).scalar_one_or_none()
+    if email_exists:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Email already exists")
+
+    new_user = models.User(username=user.username,email=user.email)
+    # Stage the new user data for insert
+    db.add(new_user)
+    # Execute and save the new user to the DB
+    db.commit()
+    # Reloads the new_user instance with the data from the DB, including the auto-generated 'id' field, so we can return it in the response
+    db.refresh(new_user)
+    return new_user
+
+# GET USER BY ID
+@app.get("/api/users/{user_id}", response_model=schemas.UserResponse)
+def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    user = db.execute(select(models.User).where(models.User.id == user_id)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+# StarletteHTTPException Handler
 @app.exception_handler(StarletteHTTPException)
 def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
     message = (
@@ -140,7 +236,7 @@ def general_http_exception_handler(request: Request, exception: StarletteHTTPExc
     )
 
 
-### RequestValidationError Handler
+# RequestValidationError Handler
 @app.exception_handler(RequestValidationError)
 def validation_exception_handler(request: Request, exception: RequestValidationError):
     if request.url.path.startswith("/api"):

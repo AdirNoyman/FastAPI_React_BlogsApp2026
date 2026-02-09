@@ -22,16 +22,16 @@
         <div class="post-detail-header">
             <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
                 <img
-                    src="https://ui-avatars.com/api/?name={{ post.author }}&background=random&size=128"
-                    alt="{{ post.author }}"
+                    src="{{ post.author.image_path}}"
+                    alt="{{ post.author.username }}"
                     class="post-detail-avatar"
                 >
                 <div>
                     <h1 class="post-detail-title">{{ post.title }}</h1>
                     <div class="post-detail-meta">
-                        <span class="post-detail-author">{{ post.author }}</span>
+                        <span class="post-detail-author">{{ post.author.username }}</span>
                         <span style="color: var(--text-muted);">•</span>
-                        <span class="post-detail-date">{{ post.date_posted }}</span>
+                        <span class="post-detail-date">{{ post.date_posted.strftime('%B %d, %Y') }}</span>
                     </div>
                 </div>
             </div>

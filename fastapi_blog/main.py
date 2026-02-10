@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, status, Depends
+from fastapi import FastAPI, HTTPException, Request, status, Depends, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
@@ -10,17 +10,23 @@ from sqlalchemy.orm import Session
 import models.models as models
 from database import Base, engine, get_db
 import models.schemas as schemas
+from pathlib import Path
+from utils import generate_unique_filename
+import shutil
 
 # Create the database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Get the base directory (where main.py is located)
+BASE_DIR = Path(__file__).resolve().parent
 
-app.mount("/media", StaticFiles(directory="media"), name="media")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
-templates = Jinja2Templates(directory="templates")
+app.mount("/media", StaticFiles(directory=str(BASE_DIR / "media")), name="media")
+
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # In-memory data store
 # posts: list[dict] = [
@@ -201,6 +207,51 @@ def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
     user = db.execute(select(models.User).where(models.User.id == user_id)).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+# UPLOAD PROFILE PICTURE
+@app.post("/api/users/{user_id}/profile-picture", response_model=schemas.UserResponse)
+async def upload_profile_picture(
+    user_id: int,
+    file: UploadFile,
+    db: Annotated[Session, Depends(get_db)],
+):
+    """
+    Upload a profile picture for a user.
+
+    This endpoint demonstrates proper file handling with:
+    - Filename sanitization (removes spaces, special characters)
+    - File type validation (only images allowed)
+    - Unique filename generation (prevents collisions)
+    """
+    # Get the user
+    user = db.execute(select(models.User).where(models.User.id == user_id)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only image files are allowed"
+        )
+
+    # Generate a unique, sanitized filename
+    # This prevents: spaces, special chars, path traversal, and filename collisions
+    unique_filename = generate_unique_filename(file.filename or "profile.png")
+
+    # Save the file to the media/profile_pics directory
+    file_path = BASE_DIR / "media" / "profile_pics" / unique_filename
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Update the user's image_file field
+    user.image_file = unique_filename
+    db.commit()
+    db.refresh(user)
+
     return user
 
 # StarletteHTTPException Handler

@@ -17,7 +17,7 @@
     <div class="card" style="padding: 32px;">
         <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
             <img
-                src="{{ url_for('static', path='profile_pics/' + user.image_file) }}"
+                src="{{user.image_path}}"
                 alt="{{ user.username }}"
                 style="width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--glow-medium); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);"
             >
@@ -110,12 +110,12 @@
             <div class="post-card animate-in delay-{{ loop.index }}">
                 <div class="post-header">
                     <img
-                        src="{{ url_for('static', path='profile_pics/' + user.image_file) }}"
-                        alt="{{ user.username }}"
+                        src="{{ post.author.image_path }}"
+                        alt="{{ post.author.username }}"
                         class="post-avatar"
                     >
                     <div class="post-meta">
-                        <span class="post-author">{{ user.username }}</span>
+                        <span class="post-author">{{ post.author.username }}</span>
                         <div class="post-date">{{ post.date_posted }}</div>
                     </div>
                 </div>

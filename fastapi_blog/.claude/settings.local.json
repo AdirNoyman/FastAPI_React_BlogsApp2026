@@ -22,7 +22,12 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd sophisticated dark dashboard design to FastAPI blog\n\nImplement production-grade dark theme interface matching modern dashboard aesthetics:\n- Ultra-dark theme \\(#0a0a0a\\) with layered card system\n- Professional sidebar with icon-enhanced navigation\n- Top navigation bar with tabs, search, and action buttons\n- Dashboard-style metric cards with trend indicators\n- Grid-based responsive blog post layout\n- Lucide icon system throughout\n- IBM Plex Mono for metrics, Inter for body text\n- Smooth animations and hover effects\n\nTransform simple blog listing into polished dashboard experience while maintaining all original functionality.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "mcp__playwright__browser_run_code",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_close"
     ]
   },
   "enableAllProjectMcpServers": true,

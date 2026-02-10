@@ -36,26 +36,11 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 #         "title": "Why I Love FastAPI",
 #         "content": "FastAPI has quickly become my favorite Python web framework. The automatic docs, type hints, and async support make it a joy to work with. If you haven't tried it yet, I highly recommend giving it a shot!",
 #         "date_posted": "December 31, 2025",
-#     },
-#     {
-#         "id": 2,
-#         "author": "GoodBoyBronx",
-#         "title": "Corey Schafer Has the Best YouTube Tutorials!",
-#         "content": "I just finished watching Corey's FastAPI series and I learned so much. His teaching style is clear, concise, and easy to follow. Highly recommend his channel to anyone looking to learn Python!",
-#         "date_posted": "December 30, 2025",
-#     },
-#     {
-#         "id": 3,
-#         "author": "PoppyTheCoder",
-#         "title": "Async/Await Finally Clicked",
-#         "content": "After struggling with async programming for months, it finally clicked for me. The key insight was understanding the event loop and how coroutines yield control. Now my APIs are lightning fast!",
-#         "date_posted": "December 27, 2025",
-#     },
-# ]
+#     },]
+
 
 # Templates routes ###########################################
 # Home and Posts List
-
 
 ## home
 @app.get("/", include_in_schema=False, name="home")

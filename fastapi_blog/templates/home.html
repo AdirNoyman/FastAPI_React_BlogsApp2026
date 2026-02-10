@@ -60,7 +60,7 @@
 
     <div class="grid grid-2">
         {% for post in posts %}
-        <a href="{{ url_for('post', post_id=post.id)}}" style="text-decoration: none; display: block;">
+        <a href="{{ url_for('post', post_id=post.id)}}" style="text-decoration: none;">
             <div class="post-card animate-in delay-{{ loop.index }}">
                 <div class="post-header">
                     <img
@@ -69,9 +69,7 @@
                         alt="{{ post.author.username }}"
                     >
                     <div class="post-meta">
-                        <span class="post-author"><a href="{{ url_for('user_posts', user_id=post.author.id) }}">
-                            {{ post.author.username }}
-                        </a></span>
+                        <span class="post-author">{{ post.author.username }}</span>
                         <div class="post-date">{{ post.date_posted.strftime('%B %d, %Y') }}</div>
                     </div>
                 </div>

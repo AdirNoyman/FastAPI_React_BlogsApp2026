@@ -22,7 +22,7 @@ class User(Base):
     )
 
     # One-to-many relationship with Post. User linked to the author field in Post
-    posts: Mapped[list[Post]] = relationship(back_populates="author")
+    posts: Mapped[list[Post]] = relationship(back_populates="author", cascade="all, delete-orphan")
 
     # This is a computed property and not a column in the database.
     @property

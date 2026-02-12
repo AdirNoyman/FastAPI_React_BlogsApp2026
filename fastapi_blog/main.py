@@ -94,7 +94,6 @@ def user_posts_page(
     )
 
 
-
 # API routes - Posts ###########################################
 # GET ALL POSTS
 @app.get("/api/posts", response_model=list[schemas.PostResponse])
@@ -132,6 +131,59 @@ def create_post(post: schemas.PostCreate, db: Annotated[Session, Depends(get_db)
     db.commit()
     db.refresh(new_post)
     return new_post
+
+## UPDATE POST - FULL UPDATE
+@app.put("/api/posts/{post_id}", response_model=schemas.PostResponse)
+def update_post_full(post_id: int, post_data: schemas.PostCreate, db: Annotated[Session, Depends(get_db)]): 
+     # TODO: add authentication and check if the current user is the author of the post before allowing updates
+    # Get the post to update   
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()   
+    # Get the user to ensure the provided user_id is valid
+    result = db.execute(select(models.User).where(models.User.id == post_data.user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )   
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    if user.id != post.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own posts",
+        )    
+   
+    # Update all fields of the post    
+    post.title = post_data.title
+    post.content = post_data.content   
+
+    db.commit()
+    db.refresh(post)
+    return post
+    
+
+## UPDATE POST - PARTIAL UPDATE
+@app.patch("/api/posts/{post_id}", response_model=schemas.PostResponse)
+def update_post_partial(post_id: int, post_data: schemas.PostUpdate, db: Annotated[Session, Depends(get_db)]):
+    # TODO: add authentication and check if the current user is the author of the post before allowing updates
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first() 
+    
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found") 
+
+    # Update post fields if they are provided in the update request
+    update_data = post_data.model_dump(exclude_unset=True)  #Exclude unprovided fields - Get only the fields that were provided in the request
+    
+
+    for key, value in update_data.items():
+        setattr(post, key, value)
+
+    db.commit()
+    db.refresh(post)
+    return post
 
 ## GET ALL POSTS BY USER
 @app.get("/api/users/{user_id}/posts", response_model=list[schemas.PostResponse])
@@ -192,6 +244,36 @@ def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
     user = db.execute(select(models.User).where(models.User.id == user_id)).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+# UPDATE USER
+@app.patch("/api/users/{user_id}", response_model=schemas.UserResponse)
+def update_user(user_id: int, user_data: schemas.UserUpdate, db: Annotated[Session, Depends(get_db)]):
+    user = db.execute(select(models.User).where(models.User.id == user_id)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    update_data = user_data.model_dump(exclude_unset=True)
+
+    # Check if email is being updated and if it already exists for another user
+    if "email" in update_data:
+        email_exists = db.execute(
+            select(models.User).where(
+                models.User.email == update_data["email"],
+                models.User.id != user_id
+            )
+        ).scalar_one_or_none()
+        if email_exists:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists"
+            )
+
+    for key, value in update_data.items():
+        setattr(user, key, value)
+
+    db.commit()
+    db.refresh(user)
     return user
 
 # UPLOAD PROFILE PICTURE
@@ -271,6 +353,15 @@ def general_http_exception_handler(request: Request, exception: StarletteHTTPExc
         status_code=exception.status_code,
     )
 
+# DELETE USER
+@app.delete("/api/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    user = db.execute(select(models.User).where(models.User.id == user_id)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return
 
 # RequestValidationError Handler
 @app.exception_handler(RequestValidationError)

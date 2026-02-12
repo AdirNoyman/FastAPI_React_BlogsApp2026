@@ -18,6 +18,9 @@ class UserResponse(User):
     image_file: str | None
     image_path: str
 
+class UserUpdate(BaseModel):
+    email: EmailStr | None = Field(default=None, max_length=120)    
+
 
 # POSTS ###################################################
 class Post(BaseModel):    
@@ -27,9 +30,14 @@ class Post(BaseModel):
 class PostCreate(Post):
      user_id: int  # TEMPORARY until we implement authentication and can get the user_id from the token
 
+class PostUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=100)
+    content: str | None = Field(default=None, min_length=10)
+
 class PostResponse(Post):
     model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int
     date_posted: datetime
     author: UserResponse
+

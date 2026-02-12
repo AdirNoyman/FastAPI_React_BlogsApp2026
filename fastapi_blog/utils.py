@@ -58,9 +58,9 @@ def generate_unique_filename(original_filename: str) -> str:
     Example:
         "profile.png" -> "abc123def456_profile.png"
     """
-    sanitized = sanitize_filename(original_filename)
-    name = Path(sanitized).stem
-    extension = Path(sanitized).suffix
+    sanitized = sanitize_filename(original_filename)  # Clean the filename (remove unsafe characters)
+    name = Path(sanitized).stem  # Get filename without extension (e.g., "profile" from "profile.png")
+    extension = Path(sanitized).suffix  # Get file extension (e.g., ".png" from "profile.png")
 
     # Generate a random token (8 hex characters)
     random_token = secrets.token_hex(4)

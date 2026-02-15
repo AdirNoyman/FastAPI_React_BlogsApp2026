@@ -1,5 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, status, Depends, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request, status, Depends
 from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi.exception_handlers import (http_exception_handler, request_validation_exception_handler)
@@ -12,10 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import models.models as models
 from database import Base, engine, get_db
-import models.schemas as schemas
 from pathlib import Path
-from utils import generate_unique_filename
-import shutil
+from routers import users, posts
+
 
 # Create the database tables
 @asynccontextmanager
@@ -28,6 +26,11 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 app = FastAPI(lifespan=lifespan)
+
+# Include routers
+app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(posts.router, prefix="/api/posts", tags=["posts"])
+
 
 # Get the base directory (where main.py is located)
 BASE_DIR = Path(__file__).resolve().parent
@@ -92,239 +95,6 @@ async def user_posts_page(
         {"posts": posts, "user": user, "title": f"{user.username}'s Posts"},
     )
 
-
-# API routes - Posts ###########################################
-# GET ALL POSTS
-@app.get("/api/posts", response_model=list[schemas.PostResponse])
-async def get_posts(db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)))
-    posts = result.scalars().all()
-    return posts
-
-# GET SINGLE POST
-@app.get("/api/posts/{post_id}", response_model=schemas.PostResponse)
-async def get_post(post_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)).where(models.Post.id == post_id))
-    post = result.scalars().first()
-    if post:
-        return post
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-
-# CREATE POST
-@app.post("/api/posts", response_model=schemas.PostResponse, status_code=status.HTTP_201_CREATED)
-async def create_post(post: schemas.PostCreate, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.User).where(models.User.id == post.user_id))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    new_post = models.Post(
-        title=post.title,
-        content=post.content,
-        user_id=post.user_id,
-    )
-    db.add(new_post)
-    await db.commit()
-    await db.refresh(new_post, attribute_names=["author"])  # Refresh the new_post instance to get the auto-generated 'id' and load the 'author' relationship for the response  
-    return new_post
-
-## UPDATE POST - FULL UPDATE
-@app.put("/api/posts/{post_id}", response_model=schemas.PostResponse)
-async def update_post_full(post_id: int, post_data: schemas.PostCreate, db: Annotated[AsyncSession, Depends(get_db)]): 
-     # TODO: add authentication and check if the current user is the author of the post before allowing updates
-    # Get the post to update   
-    result = await db.execute(select(models.Post).where(models.Post.id == post_id))
-    post = result.scalars().first()   
-    # Get the user to ensure the provided user_id is valid
-    result = await db.execute(select(models.User).where(models.User.id == post_data.user_id))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )   
-    if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    if user.id != post.user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own posts",
-        )    
-   
-    # Update all fields of the post
-    post.title = post_data.title
-    post.content = post_data.content
-
-    await db.commit()
-    await db.refresh(post, attribute_names=["author"])  # Refresh the post instance to load the updated 'author' relationship for the response
-    return post
-    
-
-## UPDATE POST - PARTIAL UPDATE
-@app.patch("/api/posts/{post_id}", response_model=schemas.PostResponse)
-async def update_post_partial(post_id: int, post_data: schemas.PostUpdate, db: Annotated[AsyncSession, Depends(get_db)]):
-    # TODO: add authentication and check if the current user is the author of the post before allowing updates
-    result = await db.execute(select(models.Post).where(models.Post.id == post_id))
-    post = result.scalars().first() 
-    
-    if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found") 
-
-    # Update post fields if they are provided in the update request
-    update_data = post_data.model_dump(exclude_unset=True)  #Exclude unprovided fields - Get only the fields that were provided in the request
-    
-
-    for key, value in update_data.items():
-        setattr(post, key, value)
-
-    await db.commit()
-    await db.refresh(post, attribute_names=["author"])  # Refresh the post instance to load the updated 'author' relationship for the response
-    return post
-
-## GET ALL POSTS BY USER
-@app.get("/api/users/{user_id}/posts", response_model=list[schemas.PostResponse])
-async def get_user_posts(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.User).where(models.User.id == user_id))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)).where(models.Post.user_id == user_id))
-    posts = result.scalars().all()
-    return posts
-
-# DELETE POST
-@app.delete("/api/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_post(post_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-    # TODO: add authentication and check if the current user is the author of the post before allowing deletion
-    result = await db.execute(select(models.Post).where(models.Post.id == post_id))
-    post = result.scalars().first()
-    if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    await db.delete(post)
-    await db.commit()
-    return 
-
-# API routes - Users ###########################################
-# CREATE USER
-@app.post("/api/users", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(user: schemas.UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
-    username_exists = await db.execute(
-        select(models.User).where(models.User.username == user.username)
-    )
-    username_exists = username_exists.scalar_one_or_none()
-    if username_exists:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Username already exists")
-    email_result = await db.execute(
-        select(models.User).where(models.User.email == user.email)
-    )
-    email_exists = email_result.scalar_one_or_none()
-    if email_exists:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Email already exists")
-
-    new_user = models.User(username=user.username,email=user.email)
-    # Stage the new user data for insert
-    db.add(new_user)
-    # Execute and save the new user to the DB
-    await db.commit()
-    # Reloads the new_user instance with the data from the DB, including the auto-generated 'id' field, so we can return it in the response
-    await db.refresh(new_user)
-    return new_user
-
-# GET USER BY ID
-@app.get("/api/users/{user_id}", response_model=schemas.UserResponse)
-async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-    user = await db.execute(select(models.User).where(models.User.id == user_id))
-    user = user.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
-
-# UPDATE USER
-@app.patch("/api/users/{user_id}", response_model=schemas.UserResponse)
-async def update_user(user_id: int, user_data: schemas.UserUpdate, db: Annotated[AsyncSession, Depends(get_db)]):
-    user = await db.execute(select(models.User).where(models.User.id == user_id))
-    user = user.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-    update_data = user_data.model_dump(exclude_unset=True)
-
-    # Check if email is being updated and if it already exists for another user
-    if "email" in update_data:
-        email_result = await db.execute(
-            select(models.User).where(
-                models.User.email == update_data["email"],
-                models.User.id != user_id
-            )
-        )
-        email_exists = email_result.scalar_one_or_none()
-        if email_exists:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already exists"
-            )
-
-    for key, value in update_data.items():
-        setattr(user, key, value)
-
-    await db.commit()
-    await db.refresh(user)
-    return user
-
-# UPLOAD PROFILE PICTURE
-@app.post("/api/users/{user_id}/profile-picture", response_model=schemas.UserResponse)
-async def upload_profile_picture(
-    user_id: int,
-    file: UploadFile,
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """
-    Upload a profile picture for a user.
-
-    This endpoint demonstrates proper file handling with:
-    - Filename sanitization (removes spaces, special characters)
-    - File type validation (only images allowed)
-    - Unique filename generation (prevents collisions)
-    """
-    # Get the user
-    result = await db.execute(select(models.User).where(models.User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-    # Validate file type
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only image files are allowed"
-        )
-
-    # Generate a unique, sanitized filename
-    # This prevents: spaces, special chars, path traversal, and filename collisions
-    unique_filename = generate_unique_filename(file.filename or "profile.png")
-
-    # Save the file to the media/profile_pics directory
-    file_path = BASE_DIR / "media" / "profile_pics" / unique_filename
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with file_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # Update the user's image_file field
-    user.image_file = unique_filename
-    await db.commit()
-    await db.refresh(user)
-
-    return user
 
 # StarletteHTTPException Handler
 @app.exception_handler(StarletteHTTPException)
